@@ -3,7 +3,6 @@ import re
 import json
 import io
 import os
-import pandas as pd
 from io import StringIO
 from openai import AzureOpenAI
 from openai import OpenAI
@@ -13,8 +12,22 @@ import pyspark
 
 ### --- getPromptResultsfromAPI --- ###
 # --------------------- #
-def getPromptResultsfromAPI(myurl,ntries,model,myinstructions,myprompt,key):
-    url=myurl
+def getPromptResultsfromAPI(ntries,model,instructions,prompt,key,url):
+    """
+    Submits the instructions followed by the prompt to the API in json format. API returns the response in json format. If the prompt returns a max token limit reached output, the script sleeps for 1 minute while tokens reset and then resubmits. A single prompt will be submitted ntries times, before the function moves on to the next prompt. 
+
+    Parameters:
+        ntries (int): Number of times function will retry prompt submission.
+        model (str): GPT model being used (in your prompt_version.py)
+        instructions (str): Instructions part of prompt (in your prompt_version.py)
+        prompt (str): Prompt question, note pasted at end
+        key (str): your API key parsed from text file
+        url (str): URL to API / model version
+
+    Returns:
+    str: Prompt response from API in json format 
+    """
+
     for x in range(ntries):
         try:
             payload = json.dumps({
@@ -22,12 +35,12 @@ def getPromptResultsfromAPI(myurl,ntries,model,myinstructions,myprompt,key):
                 "messages": [
                     {
                         "role": "system",
-                        "content": myinstructions
+                        "content": instructions
                     
                     },
                 {
                     "role": "user",
-                    "content": myprompt
+                    "content": prompt
                 }]
             })
             headers = {
@@ -35,7 +48,7 @@ def getPromptResultsfromAPI(myurl,ntries,model,myinstructions,myprompt,key):
               'Content-Type': 'application/json'
             }
 
-            response=requests.request("POST", myurl, headers=headers, data=payload)
+            response=requests.request("POST", url, headers=headers, data=payload)
             myAnswer=response.text
 
             if "Token limit is exceeded. Try again" in myAnswer:
